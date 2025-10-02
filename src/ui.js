@@ -6,13 +6,20 @@ export function setupUI({ store, tooltip }) {
   const cameraList = document.querySelector('.camera-list');
   const addButton = document.querySelector('.panel-header button');
   const form = document.querySelector('.properties-form');
-  const undoButton = document.querySelector('.action-bar .left-group button:nth-child(1)');
-  const redoButton = document.querySelector('.action-bar .left-group button:nth-child(2)');
+  const deleteButton = document.querySelector('[data-action="delete-camera"]');
   const typeButtons = Array.from(form.querySelectorAll('.camera-type-option'));
 
   addButton.addEventListener('click', () => {
     store.addCamera();
   });
+
+  if (deleteButton) {
+    deleteButton.addEventListener('click', () => {
+      const cameraId = store.getState().selectedCameraId;
+      if (!cameraId || deleteButton.disabled) return;
+      store.removeCamera(cameraId);
+    });
+  }
 
   for (const button of typeButtons) {
     button.addEventListener('click', () => {
@@ -27,9 +34,6 @@ export function setupUI({ store, tooltip }) {
       });
     });
   }
-
-  undoButton.addEventListener('click', () => store.undo());
-  redoButton.addEventListener('click', () => store.redo());
 
   form.addEventListener('input', (event) => {
     const field = event.target;
@@ -49,8 +53,9 @@ export function setupUI({ store, tooltip }) {
   const handleState = (state) => {
     renderCameraList(cameraList, state, store);
     populateForm(form, state);
-    undoButton.disabled = !store.canUndo();
-    redoButton.disabled = !store.canRedo();
+    if (deleteButton) {
+      deleteButton.disabled = !state.selectedCameraId;
+    }
   };
 
   store.subscribe(handleState);

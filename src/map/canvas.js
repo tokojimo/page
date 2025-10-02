@@ -88,6 +88,7 @@ export function setupMapCanvas({ store, tooltip }) {
     const latLng = [camera.lat, camera.lon];
     const config = getCameraTypeConfig(camera.type);
     const isPanoramic = config.isPanoramic;
+    const isPtz = camera.type === 'ptz';
     const useInfrared = Boolean(camera.infrared);
     const mainColor = useInfrared
       ? isSelected
@@ -103,6 +104,18 @@ export function setupMapCanvas({ store, tooltip }) {
       : isSelected
       ? '#1d4ed8'
       : '#0284c7';
+
+    if (isPtz) {
+      const ptzLayer = createRotatingPtzLayer(camera, {
+        isSelected,
+        mainColor,
+        strokeColor,
+      });
+      if (ptzLayer) {
+        layers.push(ptzLayer);
+      }
+      return layers;
+    }
 
     let visionProfile = null;
 
@@ -145,7 +158,8 @@ export function setupMapCanvas({ store, tooltip }) {
       if (visionProfile?.centerDistance != null) {
         directionRange = Math.min(directionRange, visionProfile.centerDistance);
       }
-      directionRange = Math.max(5, Math.min(directionRange, 200));
+      const maxDirectionRange = 200;
+      directionRange = Math.max(5, Math.min(directionRange, maxDirectionRange));
       const directionEnd = destination(camera.lat, camera.lon, directionRange, camera.azimuth ?? 0);
       const direction = L.polyline([latLng, directionEnd], {
         color: strokeColor,
@@ -171,6 +185,144 @@ export function setupMapCanvas({ store, tooltip }) {
     }
 
     return layers;
+  }
+
+  function createRotatingPtzLayer(camera, { isSelected, mainColor, strokeColor }) {
+    if (!Number.isFinite(camera.lat) || !Number.isFinite(camera.lon)) {
+      return null;
+    }
+
+    const latLng = [camera.lat, camera.lon];
+    const group = L.layerGroup();
+    const marker = L.circleMarker(latLng, {
+      radius: isSelected ? 7 : 6,
+      color: strokeColor,
+      weight: 2,
+      fillColor: mainColor,
+      fillOpacity: 1,
+    });
+    attachSelection(marker, camera.id);
+    group.addLayer(marker);
+
+    let beam = null;
+    let direction = null;
+    if (camera.showZone !== false && Number.isFinite(camera.range) && camera.range > 0) {
+      beam = L.polygon([latLng], {
+        color: strokeColor,
+        weight: isSelected ? 2 : 1,
+        opacity: 0.9,
+        fillOpacity: 0.18,
+        fillColor: mainColor,
+        lineJoin: 'round',
+      });
+      attachSelection(beam, camera.id);
+      group.addLayer(beam);
+
+      direction = L.polyline([latLng, latLng], {
+        color: strokeColor,
+        weight: isSelected ? 3 : 2,
+        opacity: 0.8,
+      });
+      attachSelection(direction, camera.id);
+      group.addLayer(direction);
+    }
+
+    if (isSelected) {
+      marker.bringToFront();
+    }
+
+    if (!beam || !direction) {
+      return group;
+    }
+
+    const rotationSpeed = 0.65; // degrees per frame
+    const fov = camera.fov ?? 90;
+    const range = Math.max(camera.range ?? 350, 5);
+    let angle = camera.azimuth ?? 0;
+    let rafId = null;
+
+    const requestFrame =
+      typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'
+        ? window.requestAnimationFrame.bind(window)
+        : (callback) => setTimeout(callback, 16);
+    const cancelFrame =
+      typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function'
+        ? window.cancelAnimationFrame.bind(window)
+        : (id) => clearTimeout(id);
+
+    const updateGeometry = () => {
+      const animatedCamera = {
+        ...camera,
+        azimuth: angle,
+        fov,
+        range,
+      };
+      const coverage = computeDirectionalCoverage(animatedCamera, buildingSegments);
+      if (coverage) {
+        beam.setLatLngs(coverage.points);
+        const directionRange = Math.max(
+          5,
+          Math.min(animatedCamera.range, coverage.centerDistance ?? animatedCamera.range)
+        );
+        const directionEnd = destination(
+          animatedCamera.lat,
+          animatedCamera.lon,
+          directionRange,
+          angle
+        );
+        direction.setLatLngs([latLng, directionEnd]);
+        return;
+      }
+
+      const halfFov = (animatedCamera.fov ?? 90) / 2;
+      const samples = Math.max(2, Math.ceil((animatedCamera.fov ?? 90) / 6));
+      const startAngle = angle - halfFov;
+      const fallbackPoints = [[animatedCamera.lat, animatedCamera.lon]];
+      for (let i = 0; i <= samples; i += 1) {
+        const rayAngle = startAngle + ((animatedCamera.fov ?? 90) * i) / samples;
+        fallbackPoints.push(
+          destination(animatedCamera.lat, animatedCamera.lon, animatedCamera.range, rayAngle)
+        );
+      }
+      beam.setLatLngs(fallbackPoints);
+      const directionEnd = destination(
+        animatedCamera.lat,
+        animatedCamera.lon,
+        animatedCamera.range,
+        angle
+      );
+      direction.setLatLngs([latLng, directionEnd]);
+    };
+
+    const animate = () => {
+      angle = (angle + rotationSpeed) % 360;
+      updateGeometry();
+      rafId = requestFrame(animate);
+    };
+
+    const start = () => {
+      stop();
+      updateGeometry();
+      if (isSelected && typeof marker.bringToFront === 'function') {
+        marker.bringToFront();
+      }
+      rafId = requestFrame(animate);
+    };
+
+    const stop = () => {
+      if (rafId != null) {
+        cancelFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    group.on('add', start);
+    group.on('remove', stop);
+
+    // Start animation immediately when created
+    start();
+
+    return group;
   }
 
   async function refreshBuildings() {

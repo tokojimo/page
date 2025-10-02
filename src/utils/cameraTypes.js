@@ -12,7 +12,7 @@ export const CAMERA_TYPES = [
     id: 'bullet',
     label: 'Caméra bullet',
     icon: 'bullet',
-    meta: '90° • 150 m',
+    meta: '90° (fixe) • 150 m',
     fov: 90,
     range: 150,
     isPanoramic: false,
@@ -24,7 +24,7 @@ export const CAMERA_TYPES = [
     meta: 'FOV 90° rotatif • 360° • 350 m',
     fov: 90,
     range: 350,
-    isPanoramic: true,
+    isPanoramic: false,
   },
   {
     id: 'panoramic',
