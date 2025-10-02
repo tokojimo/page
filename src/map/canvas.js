@@ -510,7 +510,11 @@ export function setupMapCanvas({ store, tooltip }) {
       }
 
       const halfFov = (animatedCamera.fov ?? 90) / 2;
-      const samples = getDirectionalSampleCount(animatedCamera.fov ?? 90, animatedCamera.range ?? range);
+      const { base: baseSamples } = getDirectionalSampleCount(
+        animatedCamera.fov ?? 90,
+        animatedCamera.range ?? range
+      );
+      const samples = Math.max(1, baseSamples);
       const startAngle = angle - halfFov;
       const fallbackPoints = [[animatedCamera.lat, animatedCamera.lon]];
       for (let i = 0; i <= samples; i += 1) {
@@ -740,9 +744,15 @@ function computeDirectionalCoverage(camera, buildingSegments, raycastContext) {
   const maxRange = camera.range;
   const raycast = raycastContext ?? createRaycastContext(camera, buildingSegments);
   const effectiveRange = getEffectiveRangeForSampling(maxRange, raycast);
-  const samples = getDirectionalSampleCount(fov, effectiveRange);
+  const { base: baseSamples, max: maxSamples } = getDirectionalSampleCount(fov, effectiveRange);
+  const samples = Math.max(1, baseSamples);
   const startAngle = azimuth - halfFov;
   const points = [[camera.lat, camera.lon]];
+
+  const sampleMap = new Map();
+  const congestedAngles = [];
+  // First pass collects evenly spaced rays while tracking truncated ones.
+  const toKey = (angle) => angle.toFixed(6);
 
   const centerDistance = limitRayDistance(
     camera,
@@ -755,7 +765,50 @@ function computeDirectionalCoverage(camera, buildingSegments, raycastContext) {
   for (let i = 0; i <= samples; i += 1) {
     const angle = startAngle + (fov * i) / samples;
     const distance = limitRayDistance(camera, angle, maxRange, buildingSegments, raycast);
-    points.push(destination(camera.lat, camera.lon, distance, angle));
+    sampleMap.set(toKey(angle), { angle, distance });
+    if (distance < maxRange - INTERSECTION_PADDING) {
+      congestedAngles.push(angle);
+    }
+  }
+
+  const availableBudget = Math.max(0, maxSamples - sampleMap.size);
+  if (availableBudget > 0 && congestedAngles.length > 0) {
+    const step = fov / samples;
+    const delta = Math.max(0.5, step / 2);
+    let added = 0;
+
+    for (const baseAngle of congestedAngles) {
+      if (added >= availableBudget) {
+        break;
+      }
+      for (const offset of [-delta, delta]) {
+        if (added >= availableBudget) {
+          break;
+        }
+        const refinedAngle = Math.min(
+          startAngle + fov,
+          Math.max(startAngle, baseAngle + offset)
+        );
+        const key = toKey(refinedAngle);
+        if (sampleMap.has(key)) {
+          continue;
+        }
+        const distance = limitRayDistance(
+          camera,
+          refinedAngle,
+          maxRange,
+          buildingSegments,
+          raycast
+        );
+        sampleMap.set(key, { angle: refinedAngle, distance });
+        added += 1;
+      }
+    }
+  }
+
+  const orderedSamples = Array.from(sampleMap.values()).sort((a, b) => a.angle - b.angle);
+  for (const sample of orderedSamples) {
+    points.push(destination(camera.lat, camera.lon, sample.distance, sample.angle));
   }
 
   return { points, centerDistance };
@@ -775,13 +828,69 @@ function computePanoramaCoverage(camera, buildingSegments, raycastContext) {
   const maxRange = camera.range;
   const raycast = raycastContext ?? createRaycastContext(camera, buildingSegments);
   const effectiveRange = getEffectiveRangeForSampling(maxRange, raycast);
-  const samples = getPanoramaSampleCount(effectiveRange);
+  const { base: baseSamples, max: maxSamples } = getPanoramaSampleCount(effectiveRange);
+  const samples = Math.max(1, baseSamples);
   const points = [];
+  const sampleMap = new Map();
+  const congestedAngles = [];
+  // Track the base rays that intersect an obstacle so we can refine them.
+  const toKey = (angle) => angle.toFixed(6);
+  const normalizeAngle = (angle) => {
+    const normalized = angle % 360;
+    return normalized < 0 ? normalized + 360 : normalized;
+  };
 
   for (let i = 0; i < samples; i += 1) {
     const angle = (360 * i) / samples;
-    const distance = limitRayDistance(camera, angle, maxRange, buildingSegments, raycast);
-    points.push(destination(camera.lat, camera.lon, distance, angle));
+    const normalizedAngle = normalizeAngle(angle);
+    const distance = limitRayDistance(
+      camera,
+      normalizedAngle,
+      maxRange,
+      buildingSegments,
+      raycast
+    );
+    sampleMap.set(toKey(normalizedAngle), { angle: normalizedAngle, distance });
+    if (distance < maxRange - INTERSECTION_PADDING) {
+      congestedAngles.push(normalizedAngle);
+    }
+  }
+
+  const availableBudget = Math.max(0, maxSamples - sampleMap.size);
+  if (availableBudget > 0 && congestedAngles.length > 0) {
+    const step = 360 / samples;
+    const delta = Math.max(0.5, step / 2);
+    let added = 0;
+
+    for (const baseAngle of congestedAngles) {
+      if (added >= availableBudget) {
+        break;
+      }
+      for (const offset of [-delta, delta]) {
+        if (added >= availableBudget) {
+          break;
+        }
+        const refinedAngle = normalizeAngle(baseAngle + offset);
+        const key = toKey(refinedAngle);
+        if (sampleMap.has(key)) {
+          continue;
+        }
+        const distance = limitRayDistance(
+          camera,
+          refinedAngle,
+          maxRange,
+          buildingSegments,
+          raycast
+        );
+        sampleMap.set(key, { angle: refinedAngle, distance });
+        added += 1;
+      }
+    }
+  }
+
+  const orderedSamples = Array.from(sampleMap.values()).sort((a, b) => a.angle - b.angle);
+  for (const sample of orderedSamples) {
+    points.push(destination(camera.lat, camera.lon, sample.distance, sample.angle));
   }
 
   if (points.length === 0) {
@@ -879,22 +988,42 @@ function getEffectiveRangeForSampling(range, raycastContext) {
   return Math.min(range, Math.max(minRange, scaledObstacle));
 }
 
+/**
+ * Returns sampling information for directional cameras.
+ * - `base`: number of evenly distributed rays used for the first pass.
+ * - `max`: maximum amount of rays allowed after dynamic refinement.
+ */
 function getDirectionalSampleCount(fov, range) {
   const minSamples = Math.max(6, Math.ceil(fov / 6));
   const arcLength = (Math.PI * range * Math.max(fov, 1)) / 180;
   const targetSpacing = 14; // mètres
   const adaptiveSamples = Math.ceil(arcLength / targetSpacing);
   const total = Math.max(minSamples, adaptiveSamples);
-  return Math.min(total, 160);
+  const maxSamples = 220;
+
+  return {
+    base: Math.min(total, maxSamples - 1),
+    max: maxSamples,
+  };
 }
 
+/**
+ * Returns sampling information for panoramic cameras.
+ * - `base`: initial evenly spaced rays for the 360° sweep.
+ * - `max`: cap that limits the number of rays after refinement.
+ */
 function getPanoramaSampleCount(range) {
   const minSamples = 72;
   const circumference = 2 * Math.PI * range;
   const targetSpacing = 12; // mètres
   const adaptiveSamples = Math.ceil(circumference / targetSpacing);
   const total = Math.max(minSamples, adaptiveSamples);
-  return Math.min(total, 220);
+  const maxSamples = 320;
+
+  return {
+    base: Math.min(total, maxSamples),
+    max: maxSamples,
+  };
 }
 
 function intersectRayWithSegment(direction, start, end) {
