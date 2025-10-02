@@ -1,5 +1,6 @@
 import { createCameraListItem } from './ui/cameraListItem.js';
 import { populateForm, updateControlDisplay } from './ui/formBinding.js';
+import { getCameraTypeConfig } from './utils/cameraTypes.js';
 
 export function setupUI({ store, tooltip }) {
   const cameraList = document.querySelector('.camera-list');
@@ -7,10 +8,25 @@ export function setupUI({ store, tooltip }) {
   const form = document.querySelector('.properties-form');
   const undoButton = document.querySelector('.action-bar .left-group button:nth-child(1)');
   const redoButton = document.querySelector('.action-bar .left-group button:nth-child(2)');
+  const typeButtons = Array.from(form.querySelectorAll('.camera-type-option'));
 
   addButton.addEventListener('click', () => {
     store.addCamera();
   });
+
+  for (const button of typeButtons) {
+    button.addEventListener('click', () => {
+      const cameraId = store.getState().selectedCameraId;
+      if (!cameraId || button.disabled) return;
+      const type = button.dataset.cameraType;
+      const config = getCameraTypeConfig(type);
+      store.updateCamera(cameraId, {
+        type,
+        fov: config.fov,
+        range: config.range,
+      });
+    });
+  }
 
   undoButton.addEventListener('click', () => store.undo());
   redoButton.addEventListener('click', () => store.redo());

@@ -1,4 +1,5 @@
 import { fetchBuildings } from './buildings.js';
+import { getCameraTypeConfig } from '../utils/cameraTypes.js';
 
 const GRENOBLE_CENTER = [45.1885, 5.7245];
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
@@ -85,13 +86,28 @@ export function setupMapCanvas({ store, tooltip }) {
     }
 
     const latLng = [camera.lat, camera.lon];
-    const mainColor = isSelected ? '#2563eb' : '#0ea5e9';
-    const strokeColor = isSelected ? '#1d4ed8' : '#0284c7';
+    const config = getCameraTypeConfig(camera.type);
+    const isPanoramic = config.isPanoramic;
+    const useInfrared = Boolean(camera.infrared);
+    const mainColor = useInfrared
+      ? isSelected
+        ? '#dc2626'
+        : '#ef4444'
+      : isSelected
+      ? '#2563eb'
+      : '#0ea5e9';
+    const strokeColor = useInfrared
+      ? isSelected
+        ? '#991b1b'
+        : '#b91c1c'
+      : isSelected
+      ? '#1d4ed8'
+      : '#0284c7';
 
     let visionProfile = null;
 
     if (camera.showZone !== false && Number.isFinite(camera.range) && camera.range > 0) {
-      if (camera.type === 'panorama') {
+      if (isPanoramic) {
         const coverage = computePanoramaCoverage(camera, buildingSegments);
         if (coverage) {
           visionProfile = coverage;
@@ -124,12 +140,12 @@ export function setupMapCanvas({ store, tooltip }) {
       }
     }
 
-    if (camera.type !== 'panorama') {
+    if (!isPanoramic) {
       let directionRange = camera.range || 40;
       if (visionProfile?.centerDistance != null) {
         directionRange = Math.min(directionRange, visionProfile.centerDistance);
       }
-      directionRange = Math.max(5, Math.min(directionRange, 120));
+      directionRange = Math.max(5, Math.min(directionRange, 200));
       const directionEnd = destination(camera.lat, camera.lon, directionRange, camera.azimuth ?? 0);
       const direction = L.polyline([latLng, directionEnd], {
         color: strokeColor,
