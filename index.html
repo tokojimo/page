@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Atlas Caméras — Planification</title>
+    <title>Sentinel Vision — Cartographie CCTV</title>
     <link rel="stylesheet" href="src/styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -28,10 +28,9 @@
         <div class="brand-block">
           <div class="brand-icon" aria-hidden="true"></div>
           <div>
-            <h1>Atlas Caméras</h1>
-            <p>Planification urbaine 2D</p>
+            <h1>Sentinel Vision</h1>
+            <p>Cartographie CCTV</p>
           </div>
-        </div>
         <nav class="header-actions" aria-label="Actions principales">
           <button class="ghost" type="button">Aide</button>
           <button class="ghost" type="button">Exporter</button>
@@ -57,16 +56,17 @@
           </div>
           <ul class="camera-list" role="list" aria-live="polite"></ul>
           <div class="panel-footer">
-            <button class="ghost" type="button">Dupliquer</button>
-            <button class="ghost" type="button">Supprimer</button>
+            <button
+              class="ghost ghost--danger"
+              type="button"
+              data-action="delete-camera"
+            >
+              Supprimer
+            </button>
           </div>
         </aside>
 
         <section class="map-stage" aria-label="Carte et couverture">
-          <div class="map-toolbar">
-            <button class="ghost" type="button">Fond</button>
-            <button class="ghost" type="button">Couches</button>
-          </div>
           <div class="map-canvas" role="application" aria-label="Carte stylisée">
             <div id="map-view" aria-hidden="true"></div>
             <div class="empty-state">
@@ -80,7 +80,7 @@
           <div class="panel-header">
             <h2>Propriétés</h2>
           </div>
-          <form class="properties-form" aria-describedby="properties-help">
+          <form class="properties-form">
             <fieldset>
               <legend>Position</legend>
               <label>
@@ -126,11 +126,11 @@
                   aria-pressed="false"
                 >
                   <span class="option-icon option-icon--bullet" aria-hidden="true"></span>
-                  <span class="option-body">
-                    <span class="option-title">Caméra bullet</span>
-                    <span class="option-meta">90° • 150 m</span>
-                  </span>
-                </button>
+                    <span class="option-body">
+                      <span class="option-title">Caméra bullet</span>
+                      <span class="option-meta">90° (fixe) • 150 m</span>
+                    </span>
+                  </button>
                 <button
                   type="button"
                   class="camera-type-option"
@@ -156,9 +156,6 @@
                   </span>
                 </button>
               </div>
-              <p class="type-help">
-                La sélection d&#39;un type ajuste automatiquement le champ de vision et la portée.
-              </p>
               <div class="type-summary" aria-live="polite">
                 <span>Profil :</span>
                 <strong data-role="type-meta">—</strong>
@@ -168,26 +165,9 @@
                 Vision infrarouge (IR)
               </label>
             </fieldset>
-
-            <p id="properties-help" class="form-hint">
-              Ajustez les paramètres pour visualiser la couverture en temps réel.
-            </p>
           </form>
         </aside>
       </main>
-
-      <footer class="action-bar" role="contentinfo">
-        <div class="left-group">
-          <button class="ghost" type="button">Annuler</button>
-          <button class="ghost" type="button">Refaire</button>
-        </div>
-        <div class="center-group">
-          <span class="badge">60 fps cible</span>
-        </div>
-        <div class="right-group">
-          <button class="primary" type="button">Partager le lien</button>
-        </div>
-      </footer>
     </div>
 
     <div class="tooltip" role="tooltip" hidden></div>

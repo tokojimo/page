@@ -14,4 +14,4 @@ setupMapCanvas({ store, tooltip });
 registerKeyboardShortcuts({ store });
 setupUndoRedo({ store });
 
-window.__atlasStore = store;
+window.__sentinelVisionStore = store;
