@@ -11,6 +11,16 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <script
+      defer
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
   </head>
   <body>
     <div class="app-shell">
@@ -58,8 +68,7 @@
             <button class="ghost" type="button">Couches</button>
           </div>
           <div class="map-canvas" role="application" aria-label="Carte stylisée">
-            <canvas id="map-canvas" aria-hidden="true"></canvas>
-            <svg class="map-overlays" aria-hidden="true"></svg>
+            <div id="map-view" aria-hidden="true"></div>
             <div class="empty-state">
               <h3>Commencez par placer une caméra</h3>
               <p>Cliquez sur la carte pour positionner une caméra virtuelle.</p>
@@ -92,19 +101,31 @@
               <legend>Orientation</legend>
               <label>
                 Azimut (°)
-                <input name="azimuth" type="number" min="0" max="360" step="1" />
+                <div class="slider-field">
+                  <input name="azimuth" type="range" min="0" max="360" step="1" />
+                  <output data-display-for="azimuth" aria-live="polite">45°</output>
+                </div>
               </label>
               <label>
                 Inclinaison (°)
-                <input name="tilt" type="number" min="-90" max="90" step="1" />
+                <div class="slider-field">
+                  <input name="tilt" type="range" min="-90" max="90" step="1" />
+                  <output data-display-for="tilt" aria-live="polite">-10°</output>
+                </div>
               </label>
               <label>
                 Champ (°)
-                <input name="fov" type="number" min="1" max="180" step="1" />
+                <div class="slider-field">
+                  <input name="fov" type="range" min="20" max="160" step="1" />
+                  <output data-display-for="fov" aria-live="polite">90°</output>
+                </div>
               </label>
               <label>
                 Portée (m)
-                <input name="range" type="number" min="0" step="1" />
+                <div class="slider-field">
+                  <input name="range" type="range" min="5" max="250" step="5" />
+                  <output data-display-for="range" aria-live="polite">60 m</output>
+                </div>
               </label>
             </fieldset>
 

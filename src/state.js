@@ -1,8 +1,8 @@
 import { nanoid } from './utils/nanoid.js';
 
 const DEFAULT_CAMERA = {
-  lat: 48.8566,
-  lon: 2.3522,
+  lat: 45.1885,
+  lon: 5.7245,
   z: 6,
   azimuth: 45,
   tilt: -10,

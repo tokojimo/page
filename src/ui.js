@@ -1,5 +1,5 @@
 import { createCameraListItem } from './ui/cameraListItem.js';
-import { populateForm } from './ui/formBinding.js';
+import { populateForm, updateControlDisplay } from './ui/formBinding.js';
 
 export function setupUI({ store, tooltip }) {
   const cameraList = document.querySelector('.camera-list');
@@ -18,8 +18,13 @@ export function setupUI({ store, tooltip }) {
   form.addEventListener('input', (event) => {
     const field = event.target;
     if (!field.name) return;
+    updateControlDisplay(form, field);
     const cameraId = store.getState().selectedCameraId;
     if (!cameraId) return;
+
+    if (field.type === 'radio' && !field.checked) {
+      return;
+    }
 
     const value = parseField(field);
     store.updateCamera(cameraId, { [field.name]: value });
