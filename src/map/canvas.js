@@ -311,26 +311,34 @@ export function setupMapCanvas({ store, tooltip }) {
   }
 
   function getDirectionalCoverage(camera) {
-    if (!camera || camera.id == null) {
+    if (!camera) {
+      return null;
+    }
+    if (camera.id == null) {
       return computeDirectionalCoverage(camera, buildingSegments);
     }
     const entry = ensureCoverageEntry(camera.id);
+    const raycast = ensureRaycastContext(entry, camera);
     const key = `${buildingSegmentsVersion}|${getDirectionalKey(camera)}`;
     if (entry.directionalKey !== key) {
-      entry.directional = computeDirectionalCoverage(camera, buildingSegments);
+      entry.directional = computeDirectionalCoverage(camera, buildingSegments, raycast);
       entry.directionalKey = key;
     }
     return entry.directional;
   }
 
   function getPanoramaCoverage(camera) {
-    if (!camera || camera.id == null) {
+    if (!camera) {
+      return null;
+    }
+    if (camera.id == null) {
       return computePanoramaCoverage(camera, buildingSegments);
     }
     const entry = ensureCoverageEntry(camera.id);
+    const raycast = ensureRaycastContext(entry, camera);
     const key = `${buildingSegmentsVersion}|${getPanoramaKey(camera)}`;
     if (entry.panoramaKey !== key) {
-      entry.panorama = computePanoramaCoverage(camera, buildingSegments);
+      entry.panorama = computePanoramaCoverage(camera, buildingSegments, raycast);
       entry.panoramaKey = key;
     }
     return entry.panorama;
@@ -344,10 +352,28 @@ export function setupMapCanvas({ store, tooltip }) {
         directionalKey: null,
         panorama: null,
         panoramaKey: null,
+        raycast: null,
+        raycastKey: null,
       };
       coverageCache.set(cameraId, entry);
     }
     return entry;
+  }
+
+  function ensureRaycastContext(entry, camera) {
+    if (!camera || !Number.isFinite(camera.lat) || !Number.isFinite(camera.lon)) {
+      entry.raycast = null;
+      entry.raycastKey = null;
+      return null;
+    }
+
+    const raycastKey =
+      `${buildingSegmentsVersion}|${formatNumber(camera.lat)}|${formatNumber(camera.lon)}`;
+    if (entry.raycastKey !== raycastKey) {
+      entry.raycast = createRaycastContext(camera, buildingSegments);
+      entry.raycastKey = raycastKey;
+    }
+    return entry.raycast;
   }
 
   function getDirectionalKey(camera) {
@@ -383,6 +409,8 @@ export function setupMapCanvas({ store, tooltip }) {
 
     let beam = null;
     let direction = null;
+    let raycast = null;
+    let raycastKey = null;
 
     const shouldShowZone = () =>
       cameraState.showZone !== false && Number.isFinite(cameraState.range) && cameraState.range > 0;
@@ -458,7 +486,13 @@ export function setupMapCanvas({ store, tooltip }) {
         fov,
         range,
       };
-      const coverage = computeDirectionalCoverage(animatedCamera, buildingSegments);
+      const candidateKey =
+        `${buildingSegmentsVersion}|${formatNumber(animatedCamera.lat)}|${formatNumber(animatedCamera.lon)}`;
+      if (raycastKey !== candidateKey) {
+        raycast = createRaycastContext(animatedCamera, buildingSegments);
+        raycastKey = candidateKey;
+      }
+      const coverage = computeDirectionalCoverage(animatedCamera, buildingSegments, raycast);
       if (coverage) {
         beam.setLatLngs(coverage.points);
         const directionRange = Math.max(
@@ -476,7 +510,7 @@ export function setupMapCanvas({ store, tooltip }) {
       }
 
       const halfFov = (animatedCamera.fov ?? 90) / 2;
-      const samples = Math.max(2, Math.ceil((animatedCamera.fov ?? 90) / 6));
+      const samples = getDirectionalSampleCount(animatedCamera.fov ?? 90, animatedCamera.range ?? range);
       const startAngle = angle - halfFov;
       const fallbackPoints = [[animatedCamera.lat, animatedCamera.lon]];
       for (let i = 0; i <= samples; i += 1) {
@@ -537,6 +571,8 @@ export function setupMapCanvas({ store, tooltip }) {
         latLng[1] = cameraState.lon;
         marker.setLatLng(latLng);
         ensureZoneLayers();
+        raycastKey = null;
+        raycast = null;
         if (updatedCamera.azimuth != null) {
           angle = updatedCamera.azimuth;
         }
@@ -623,6 +659,8 @@ export function setupMapCanvas({ store, tooltip }) {
         entry.directionalKey = null;
         entry.panorama = null;
         entry.panoramaKey = null;
+        entry.raycast = null;
+        entry.raycastKey = null;
       }
     }
     buildingLayer.clearLayers();
@@ -685,8 +723,14 @@ function destination(lat, lon, distance, bearingDeg) {
   return [(destLat * 180) / Math.PI, ((destLon * 180) / Math.PI + 540) % 360 - 180];
 }
 
-function computeDirectionalCoverage(camera, buildingSegments) {
-  if (!Number.isFinite(camera.range) || camera.range <= 0) {
+function computeDirectionalCoverage(camera, buildingSegments, raycastContext) {
+  if (
+    !camera ||
+    !Number.isFinite(camera.lat) ||
+    !Number.isFinite(camera.lon) ||
+    !Number.isFinite(camera.range) ||
+    camera.range <= 0
+  ) {
     return null;
   }
 
@@ -694,33 +738,49 @@ function computeDirectionalCoverage(camera, buildingSegments) {
   const halfFov = fov / 2;
   const azimuth = camera.azimuth ?? 0;
   const maxRange = camera.range;
-  const samples = Math.max(2, Math.ceil(fov / 8));
+  const raycast = raycastContext ?? createRaycastContext(camera, buildingSegments);
+  const effectiveRange = getEffectiveRangeForSampling(maxRange, raycast);
+  const samples = getDirectionalSampleCount(fov, effectiveRange);
   const startAngle = azimuth - halfFov;
   const points = [[camera.lat, camera.lon]];
 
-  const centerDistance = limitRayDistance(camera, azimuth, maxRange, buildingSegments);
+  const centerDistance = limitRayDistance(
+    camera,
+    azimuth,
+    maxRange,
+    buildingSegments,
+    raycast
+  );
 
   for (let i = 0; i <= samples; i += 1) {
     const angle = startAngle + (fov * i) / samples;
-    const distance = limitRayDistance(camera, angle, maxRange, buildingSegments);
+    const distance = limitRayDistance(camera, angle, maxRange, buildingSegments, raycast);
     points.push(destination(camera.lat, camera.lon, distance, angle));
   }
 
   return { points, centerDistance };
 }
 
-function computePanoramaCoverage(camera, buildingSegments) {
-  if (!Number.isFinite(camera.range) || camera.range <= 0) {
+function computePanoramaCoverage(camera, buildingSegments, raycastContext) {
+  if (
+    !camera ||
+    !Number.isFinite(camera.lat) ||
+    !Number.isFinite(camera.lon) ||
+    !Number.isFinite(camera.range) ||
+    camera.range <= 0
+  ) {
     return null;
   }
 
   const maxRange = camera.range;
-  const samples = 48;
+  const raycast = raycastContext ?? createRaycastContext(camera, buildingSegments);
+  const effectiveRange = getEffectiveRangeForSampling(maxRange, raycast);
+  const samples = getPanoramaSampleCount(effectiveRange);
   const points = [];
 
   for (let i = 0; i < samples; i += 1) {
     const angle = (360 * i) / samples;
-    const distance = limitRayDistance(camera, angle, maxRange, buildingSegments);
+    const distance = limitRayDistance(camera, angle, maxRange, buildingSegments, raycast);
     points.push(destination(camera.lat, camera.lon, distance, angle));
   }
 
@@ -732,12 +792,15 @@ function computePanoramaCoverage(camera, buildingSegments) {
   return { points };
 }
 
-function limitRayDistance(camera, bearing, maxRange, buildingSegments) {
-  if (!Array.isArray(buildingSegments) || buildingSegments.length === 0) {
+function limitRayDistance(camera, bearing, maxRange, buildingSegments, raycastContext) {
+  if (!camera) {
+    return maxRange;
+  }
+  const raycast = raycastContext ?? createRaycastContext(camera, buildingSegments);
+  if (!raycast || !Array.isArray(raycast.segments) || raycast.segments.length === 0) {
     return maxRange;
   }
 
-  const cosLat = Math.cos((camera.lat * Math.PI) / 180);
   const bearingRad = (bearing * Math.PI) / 180;
   const direction = {
     x: Math.sin(bearingRad),
@@ -747,11 +810,10 @@ function limitRayDistance(camera, bearing, maxRange, buildingSegments) {
   let minDistance = maxRange;
   let hasIntersection = false;
 
-  for (const [start, end] of buildingSegments) {
-    const a = projectPoint(camera, start, cosLat);
-    const b = projectPoint(camera, end, cosLat);
+  for (const segment of raycast.segments) {
+    const { start, end } = segment;
 
-    const distance = intersectRayWithSegment(direction, a, b);
+    const distance = intersectRayWithSegment(direction, start, end);
     if (distance == null) continue;
     if (distance < 0.5) continue;
     if (distance < minDistance) {
@@ -771,6 +833,68 @@ function projectPoint(camera, point, cosLat) {
   const dLat = (point[0] - camera.lat) * DEG_TO_RAD * EARTH_RADIUS;
   const dLon = (point[1] - camera.lon) * DEG_TO_RAD * EARTH_RADIUS * cosLat;
   return { x: dLon, y: dLat };
+}
+
+function createRaycastContext(camera, buildingSegments) {
+  if (!camera || !Number.isFinite(camera.lat) || !Number.isFinite(camera.lon)) {
+    return null;
+  }
+
+  if (!Array.isArray(buildingSegments) || buildingSegments.length === 0) {
+    return null;
+  }
+
+  const cosLat = Math.cos((camera.lat * Math.PI) / 180);
+  const segments = [];
+  let nearestObstacle = Infinity;
+
+  for (const [start, end] of buildingSegments) {
+    if (!start || !end) continue;
+    const projectedStart = projectPoint(camera, start, cosLat);
+    const projectedEnd = projectPoint(camera, end, cosLat);
+    segments.push({ start: projectedStart, end: projectedEnd });
+
+    const startDistance = Math.hypot(projectedStart.x, projectedStart.y);
+    const endDistance = Math.hypot(projectedEnd.x, projectedEnd.y);
+    nearestObstacle = Math.min(nearestObstacle, startDistance, endDistance);
+  }
+
+  if (segments.length === 0) {
+    return null;
+  }
+
+  return {
+    segments,
+    nearestObstacle: Number.isFinite(nearestObstacle) ? nearestObstacle : null,
+  };
+}
+
+function getEffectiveRangeForSampling(range, raycastContext) {
+  if (!raycastContext?.nearestObstacle || !Number.isFinite(raycastContext.nearestObstacle)) {
+    return range;
+  }
+
+  const minRange = range * 0.5;
+  const scaledObstacle = raycastContext.nearestObstacle * 1.3;
+  return Math.min(range, Math.max(minRange, scaledObstacle));
+}
+
+function getDirectionalSampleCount(fov, range) {
+  const minSamples = Math.max(6, Math.ceil(fov / 6));
+  const arcLength = (Math.PI * range * Math.max(fov, 1)) / 180;
+  const targetSpacing = 14; // mètres
+  const adaptiveSamples = Math.ceil(arcLength / targetSpacing);
+  const total = Math.max(minSamples, adaptiveSamples);
+  return Math.min(total, 160);
+}
+
+function getPanoramaSampleCount(range) {
+  const minSamples = 72;
+  const circumference = 2 * Math.PI * range;
+  const targetSpacing = 12; // mètres
+  const adaptiveSamples = Math.ceil(circumference / targetSpacing);
+  const total = Math.max(minSamples, adaptiveSamples);
+  return Math.min(total, 220);
 }
 
 function intersectRayWithSegment(direction, start, end) {
