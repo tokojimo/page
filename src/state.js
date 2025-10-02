@@ -1,13 +1,14 @@
 import { nanoid } from './utils/nanoid.js';
+import { DEFAULT_CAMERA_TYPE, getCameraTypeConfig } from './utils/cameraTypes.js';
 
 const DEFAULT_CAMERA = {
   lat: 45.1885,
   lon: 5.7245,
-  z: 6,
   azimuth: 45,
-  fov: 90,
-  range: 60,
-  type: 'cone',
+  type: DEFAULT_CAMERA_TYPE.id,
+  fov: DEFAULT_CAMERA_TYPE.fov,
+  range: DEFAULT_CAMERA_TYPE.range,
+  infrared: false,
 };
 
 export function createStateStore() {
@@ -58,9 +59,22 @@ export function createStateStore() {
       return camera;
     },
     updateCamera(id, patch) {
-      const cameras = state.cameras.map((camera) =>
-        camera.id === id ? { ...camera, ...patch } : camera
-      );
+      const cameras = state.cameras.map((camera) => {
+        if (camera.id !== id) {
+          return camera;
+        }
+
+        if (patch.type) {
+          const config = getCameraTypeConfig(patch.type);
+          patch = {
+            ...patch,
+            fov: config.fov,
+            range: config.range,
+          };
+        }
+
+        return { ...camera, ...patch };
+      });
       pushHistory({ cameras });
     },
     removeCamera(id) {

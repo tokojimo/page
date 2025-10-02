@@ -1,3 +1,5 @@
+import { getCameraTypeConfig } from '../utils/cameraTypes.js';
+
 export function populateForm(form, state) {
   const camera = state.cameras.find((cam) => cam.id === state.selectedCameraId);
   const controls = form.querySelectorAll('[name]');
@@ -30,6 +32,7 @@ export function populateForm(form, state) {
   }
 
   updateOutputs(form, camera);
+  updateTypeSelection(form, camera);
 }
 
 export function updateControlDisplay(form, field) {
@@ -56,6 +59,32 @@ function updateOutputs(form, camera) {
     const fieldName = output.dataset.displayFor;
     const value = camera ? camera[fieldName] : null;
     output.textContent = formatDisplay(fieldName, value);
+  }
+}
+
+function updateTypeSelection(form, camera) {
+  const buttons = form.querySelectorAll('.camera-type-option');
+  const summary = form.querySelector('[data-role="type-meta"]');
+  const config = camera ? getCameraTypeConfig(camera.type) : null;
+
+  for (const button of buttons) {
+    const isSelected = Boolean(camera) && camera.type === button.dataset.cameraType;
+    button.classList.toggle('is-active', isSelected);
+    button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+
+    if (!camera) {
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+      button.tabIndex = -1;
+    } else {
+      button.disabled = false;
+      button.removeAttribute('aria-disabled');
+      button.tabIndex = 0;
+    }
+  }
+
+  if (summary) {
+    summary.textContent = config ? config.meta : '—';
   }
 }
 
