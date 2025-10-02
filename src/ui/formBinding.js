@@ -68,7 +68,7 @@ function formatDisplay(name, value) {
     return `${Math.round(value)} m`;
   }
 
-  if (name === 'azimuth' || name === 'tilt' || name === 'fov') {
+  if (name === 'azimuth' || name === 'fov') {
     return `${Math.round(value)}°`;
   }
 

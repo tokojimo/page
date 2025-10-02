@@ -5,13 +5,9 @@ const DEFAULT_CAMERA = {
   lon: 5.7245,
   z: 6,
   azimuth: 45,
-  tilt: -10,
   fov: 90,
   range: 60,
   type: 'cone',
-  stickToBuilding: false,
-  showZone: true,
-  deadZones: false,
 };
 
 export function createStateStore() {
