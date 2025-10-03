@@ -15,7 +15,7 @@ const OSRM_PROFILE_ALIASES = {
   vélo: OSRM_PROFILES.cycling,
 };
 
-function resolveProfile(mode) {
+export function resolveProfile(mode) {
   if (typeof mode !== 'string') {
     return OSRM_PROFILES.driving;
   }
