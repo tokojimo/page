@@ -20,6 +20,7 @@ const DEFAULT_ROUTE_STATE = {
   selection: null,
   isLoading: false,
   error: null,
+  mode: 'driving',
 };
 
 export function createStateStore() {
@@ -135,6 +136,23 @@ export function createStateStore() {
       state = { ...state, route: nextRoute };
       notify();
     },
+    setRouteMode(mode) {
+      const allowed = new Set(['driving', 'walking', 'cycling']);
+      const normalized = allowed.has(mode) ? mode : DEFAULT_ROUTE_STATE.mode;
+      const nextRoute = {
+        ...state.route,
+        mode: normalized,
+      };
+      if (nextRoute.mode !== state.route.mode) {
+        nextRoute.path = null;
+        nextRoute.distance = null;
+        nextRoute.duration = null;
+        nextRoute.error = null;
+        nextRoute.isLoading = false;
+      }
+      state = { ...state, route: nextRoute };
+      notify();
+    },
     setRouteLoading(isLoading) {
       state = {
         ...state,
@@ -183,7 +201,7 @@ export function createStateStore() {
     clearRoute() {
       state = {
         ...state,
-        route: { ...DEFAULT_ROUTE_STATE },
+        route: { ...DEFAULT_ROUTE_STATE, mode: state.route.mode || DEFAULT_ROUTE_STATE.mode },
       };
       notify();
     },

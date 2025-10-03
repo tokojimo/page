@@ -11,6 +11,7 @@ export function setupRoutePanel({ store }) {
   const summary = panel.querySelector('[data-role="route-summary"]');
   const clearButton = panel.querySelector('[data-action="clear-route"]');
   const pointButtons = Array.from(panel.querySelectorAll('[data-route-point]'));
+  const modeButtons = Array.from(panel.querySelectorAll('[data-route-mode]'));
 
   for (const button of pointButtons) {
     button.addEventListener('click', () => {
@@ -18,6 +19,13 @@ export function setupRoutePanel({ store }) {
       const { route } = store.getState();
       const nextSelection = route.selection === point ? null : point;
       store.setRouteSelection(nextSelection);
+    });
+  }
+
+  for (const button of modeButtons) {
+    button.addEventListener('click', () => {
+      const mode = button.dataset.routeMode;
+      store.setRouteMode(mode);
     });
   }
 
@@ -30,6 +38,7 @@ export function setupRoutePanel({ store }) {
   const render = (state) => {
     const { route } = state;
     updateButtons(route);
+    updateModes(route);
     updateStatus(route);
     updateSummary(route);
   };
@@ -120,6 +129,18 @@ export function setupRoutePanel({ store }) {
     }
 
     summary.textContent = '—';
+  }
+
+  function updateModes(route) {
+    if (modeButtons.length === 0) return;
+
+    const activeMode = route?.mode || 'driving';
+    for (const button of modeButtons) {
+      const mode = button.dataset.routeMode;
+      const isActive = mode === activeMode;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    }
   }
 }
 

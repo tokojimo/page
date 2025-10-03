@@ -191,7 +191,7 @@ export function setupMapCanvas({ store, tooltip }) {
       return;
     }
 
-    const key = getRouteKey(route.start, route.end);
+    const key = getRouteKey(route.start, route.end, route.mode);
 
     if (!Array.isArray(route.path) || route.path.length === 0) {
       if (lastRouteKey === key) {
@@ -213,14 +213,14 @@ export function setupMapCanvas({ store, tooltip }) {
     }
 
     activeRouteKey = key;
-    requestRoute(route.start, route.end, key);
+    requestRoute(route.start, route.end, route.mode, key);
   }
 
-  async function requestRoute(start, end, key) {
+  async function requestRoute(start, end, mode, key) {
     const requestId = ++routeRequestId;
     store.setRouteLoading(true);
     try {
-      const result = await fetchRouteBetween(start, end);
+      const result = await fetchRouteBetween(start, end, mode);
       if (requestId !== routeRequestId) {
         return;
       }
@@ -253,8 +253,11 @@ export function setupMapCanvas({ store, tooltip }) {
     return Boolean(point) && Number.isFinite(point.lat) && Number.isFinite(point.lon);
   }
 
-  function getRouteKey(start, end) {
-    return [start.lat, start.lon, end.lat, end.lon].map(formatNumber).join('|');
+  function getRouteKey(start, end, mode) {
+    const coordsKey = [start.lat, start.lon, end.lat, end.lon]
+      .map(formatNumber)
+      .join('|');
+    return `${coordsKey}|${mode || 'driving'}`;
   }
 
   function ensureCameraLayers(camera, appearance) {
