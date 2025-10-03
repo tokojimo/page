@@ -1,8 +1,8 @@
 const OSRM_BASE_URL = 'https://router.project-osrm.org/route/v1/';
 const OSRM_PROFILES = {
   driving: 'driving',
-  walking: 'walking',
-  cycling: 'cycling',
+  walking: 'foot',
+  cycling: 'bike',
 };
 
 function resolveProfile(mode) {
