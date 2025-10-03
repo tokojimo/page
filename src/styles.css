@@ -41,7 +41,7 @@ body {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(1400px, 100%);
-  min-height: 100vh;
+  height: 100vh;
   background: var(--bg);
   padding: 24px clamp(12px, 3vw, 32px);
   gap: 20px;
