@@ -96,16 +96,20 @@
                 +
               </button>
             </div>
-            <div class="search-box">
-              <label class="sr-only" for="camera-search">Rechercher une caméra</label>
-              <input
-                id="camera-search"
-                type="search"
-                placeholder="Rechercher"
-                autocomplete="off"
-              />
+            <div class="panel-body">
+              <div class="search-box">
+                <label class="sr-only" for="camera-search">Rechercher une caméra</label>
+                <input
+                  id="camera-search"
+                  type="search"
+                  placeholder="Rechercher"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="camera-scroll-area">
+                <ul class="camera-list" role="list" aria-live="polite"></ul>
+              </div>
             </div>
-            <ul class="camera-list" role="list" aria-live="polite"></ul>
             <div class="panel-footer">
               <button
                 class="ghost ghost--danger"
