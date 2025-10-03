@@ -11,12 +11,24 @@ const DEFAULT_CAMERA = {
   infrared: false,
 };
 
+const DEFAULT_ROUTE_STATE = {
+  start: null,
+  end: null,
+  path: null,
+  distance: null,
+  duration: null,
+  selection: null,
+  isLoading: false,
+  error: null,
+};
+
 export function createStateStore() {
   let state = {
     cameras: [],
     selectedCameraId: null,
     obstacles: [],
     heatmap: null,
+    route: { ...DEFAULT_ROUTE_STATE },
     history: {
       past: [],
       future: [],
@@ -93,6 +105,86 @@ export function createStateStore() {
     },
     setHeatmap(heatmap) {
       state = { ...state, heatmap };
+      notify();
+    },
+    setRouteSelection(selection) {
+      const normalized = selection === 'start' || selection === 'end' ? selection : null;
+      state = {
+        ...state,
+        route: {
+          ...state.route,
+          selection: normalized,
+        },
+      };
+      notify();
+    },
+    setRoutePoint(point, coords) {
+      if (point !== 'start' && point !== 'end') {
+        return;
+      }
+      const nextRoute = {
+        ...state.route,
+        [point]: coords,
+        selection: null,
+        path: null,
+        distance: null,
+        duration: null,
+        error: null,
+        isLoading: false,
+      };
+      state = { ...state, route: nextRoute };
+      notify();
+    },
+    setRouteLoading(isLoading) {
+      state = {
+        ...state,
+        route: {
+          ...state.route,
+          isLoading: Boolean(isLoading),
+          error: null,
+        },
+      };
+      notify();
+    },
+    setRouteResult({ path, distance, duration }) {
+      state = {
+        ...state,
+        route: {
+          ...state.route,
+          path: Array.isArray(path)
+            ? path.map((point) =>
+                point && typeof point === 'object'
+                  ? { lat: Number(point.lat), lon: Number(point.lon) }
+                  : null
+              ).filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lon))
+            : null,
+          distance: Number.isFinite(distance) ? distance : null,
+          duration: Number.isFinite(duration) ? duration : null,
+          isLoading: false,
+          error: null,
+        },
+      };
+      notify();
+    },
+    setRouteError(message) {
+      state = {
+        ...state,
+        route: {
+          ...state.route,
+          isLoading: false,
+          path: null,
+          distance: null,
+          duration: null,
+          error: message || 'Itinéraire indisponible',
+        },
+      };
+      notify();
+    },
+    clearRoute() {
+      state = {
+        ...state,
+        route: { ...DEFAULT_ROUTE_STATE },
+      };
       notify();
     },
     canUndo() {

@@ -1,8 +1,11 @@
 import { createCameraListItem } from './ui/cameraListItem.js';
 import { populateForm, updateControlDisplay } from './ui/formBinding.js';
+import { setupRoutePanel } from './ui/routePanel.js';
 import { getCameraTypeConfig } from './utils/cameraTypes.js';
 
 export function setupUI({ store, tooltip }) {
+  setupRoutePanel({ store });
+
   const cameraList = document.querySelector('.camera-list');
   const addButton = document.querySelector('.panel-header button');
   const form = document.querySelector('.properties-form');
