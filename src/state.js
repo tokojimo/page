@@ -1,3 +1,4 @@
+import { resolveProfile } from './services/routing.js';
 import { nanoid } from './utils/nanoid.js';
 import { DEFAULT_CAMERA_TYPE, getCameraTypeConfig } from './utils/cameraTypes.js';
 
@@ -137,8 +138,8 @@ export function createStateStore() {
       notify();
     },
     setRouteMode(mode) {
-      const allowed = new Set(['driving', 'walking', 'cycling']);
-      const normalized = allowed.has(mode) ? mode : DEFAULT_ROUTE_STATE.mode;
+      const cleanedMode = typeof mode === 'string' ? mode.trim() : mode;
+      const normalized = resolveProfile(cleanedMode);
       const nextRoute = {
         ...state.route,
         mode: normalized,

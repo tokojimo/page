@@ -1,3 +1,5 @@
+import { resolveProfile } from '../services/routing.js';
+
 const POINT_LABELS = {
   start: 'le départ',
   end: 'l’arrivée',
@@ -147,10 +149,13 @@ export function setupRoutePanel({ store }) {
   function updateModes(route) {
     if (modeButtons.length === 0) return;
 
-    const activeMode = route?.mode || 'driving';
+    const activeMode = resolveProfile(route?.mode);
     for (const button of modeButtons) {
-      const mode = button.dataset.routeMode;
-      const isActive = mode === activeMode;
+      const mode = typeof button.dataset.routeMode === 'string'
+        ? button.dataset.routeMode.trim()
+        : button.dataset.routeMode;
+      const resolvedMode = resolveProfile(mode);
+      const isActive = resolvedMode === activeMode;
       button.classList.toggle('is-active', isActive);
       button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     }
