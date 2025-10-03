@@ -45,7 +45,7 @@
             </div>
             <div class="route-panel-body">
               <p class="route-panel-status" data-role="route-status" aria-live="polite">
-                Sélectionnez un point de départ et d’arrivée.
+                Choisissez deux points sur la carte.
               </p>
               <div class="route-points" role="group" aria-label="Points de l’itinéraire">
                 <button
@@ -54,22 +54,27 @@
                   data-route-point="start"
                   aria-pressed="false"
                 >
-                  <span class="route-point-title">Point A</span>
-                  <span class="route-point-meta" data-role="point-start-meta">Cliquez sur la carte</span>
+                  <span class="route-point-marker" aria-hidden="true">A</span>
+                  <span class="route-point-content">
+                    <span class="route-point-title">Départ</span>
+                    <span class="route-point-meta" data-role="point-start-meta">Choisir sur la carte</span>
+                  </span>
                 </button>
-                <div class="route-points-connector" aria-hidden="true"></div>
                 <button
                   type="button"
                   class="route-point-button route-point-button--end"
                   data-route-point="end"
                   aria-pressed="false"
                 >
-                  <span class="route-point-title">Point B</span>
-                  <span class="route-point-meta" data-role="point-end-meta">Cliquez sur la carte</span>
+                  <span class="route-point-marker" aria-hidden="true">B</span>
+                  <span class="route-point-content">
+                    <span class="route-point-title">Arrivée</span>
+                    <span class="route-point-meta" data-role="point-end-meta">Choisir sur la carte</span>
+                  </span>
                 </button>
               </div>
               <div class="route-panel-summary" aria-live="polite">
-                <span>Trajet :</span>
+                <span>Trajet</span>
                 <strong data-role="route-summary">—</strong>
               </div>
               <button
