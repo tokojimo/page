@@ -1,8 +1,18 @@
 const OSRM_BASE_URL = 'https://router.project-osrm.org/route/v1/';
 const OSRM_PROFILES = {
   driving: 'driving',
-  walking: 'foot',
-  cycling: 'bike',
+  walking: 'walking',
+  cycling: 'cycling',
+};
+
+const OSRM_PROFILE_ALIASES = {
+  car: OSRM_PROFILES.driving,
+  voiture: OSRM_PROFILES.driving,
+  foot: OSRM_PROFILES.walking,
+  marche: OSRM_PROFILES.walking,
+  bike: OSRM_PROFILES.cycling,
+  bicycle: OSRM_PROFILES.cycling,
+  vélo: OSRM_PROFILES.cycling,
 };
 
 function resolveProfile(mode) {
@@ -10,7 +20,7 @@ function resolveProfile(mode) {
     return OSRM_PROFILES.driving;
   }
   const normalized = mode.toLowerCase();
-  return OSRM_PROFILES[normalized] || OSRM_PROFILES.driving;
+  return OSRM_PROFILES[normalized] || OSRM_PROFILE_ALIASES[normalized] || OSRM_PROFILES.driving;
 }
 
 function buildRouteUrl(start, end, mode) {
