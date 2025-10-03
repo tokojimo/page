@@ -1,6 +1,6 @@
 const POINT_LABELS = {
-  start: 'Point A',
-  end: 'Point B',
+  start: 'le départ',
+  end: 'l’arrivée',
 };
 
 export function setupRoutePanel({ store }) {
@@ -48,7 +48,7 @@ export function setupRoutePanel({ store }) {
       const coords = route[point];
       button.classList.toggle('is-defined', Boolean(coords));
       if (meta) {
-        meta.textContent = coords ? formatCoordinates(coords) : 'Cliquez sur la carte';
+        meta.textContent = coords ? formatCoordinates(coords) : 'Choisir sur la carte';
       }
     }
 
@@ -63,11 +63,11 @@ export function setupRoutePanel({ store }) {
     if (!status) return;
 
     if (route.selection) {
-      status.textContent = `Cliquez sur la carte pour placer ${POINT_LABELS[route.selection]}.`;
+      status.textContent = `Touchez la carte pour fixer ${POINT_LABELS[route.selection]}.`;
       return;
     }
     if (route.isLoading) {
-      status.textContent = 'Calcul de l’itinéraire en cours…';
+      status.textContent = 'Calcul en cours…';
       return;
     }
     if (route.error) {
@@ -75,23 +75,23 @@ export function setupRoutePanel({ store }) {
       return;
     }
     if (route.path && route.path.length > 1) {
-      status.textContent = 'Itinéraire calculé selon le trajet le plus court.';
+      status.textContent = 'Itinéraire prêt.';
       return;
     }
     if (route.start && !route.end) {
-      status.textContent = 'Sélectionnez Point B pour définir l’arrivée.';
+      status.textContent = 'Sélectionnez l’arrivée.';
       return;
     }
     if (!route.start && route.end) {
-      status.textContent = 'Sélectionnez Point A pour définir le départ.';
+      status.textContent = 'Sélectionnez le départ.';
       return;
     }
     if (route.start && route.end) {
-      status.textContent = 'Points définis. Relancez un calcul si nécessaire.';
+      status.textContent = 'Points définis. Relancez si besoin.';
       return;
     }
 
-    status.textContent = 'Sélectionnez un point de départ et d’arrivée.';
+    status.textContent = 'Choisissez deux points sur la carte.';
   }
 
   function updateSummary(route) {
