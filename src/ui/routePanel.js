@@ -3,6 +3,12 @@ const POINT_LABELS = {
   end: 'l’arrivée',
 };
 
+const MODE_LABELS = {
+  driving: { status: 'le mode voiture', summary: 'Voiture' },
+  walking: { status: 'la marche', summary: 'À pied' },
+  cycling: { status: 'le vélo', summary: 'À vélo' },
+};
+
 export function setupRoutePanel({ store }) {
   const panel = document.querySelector('.route-panel');
   if (!panel) return;
@@ -84,7 +90,10 @@ export function setupRoutePanel({ store }) {
       return;
     }
     if (route.path && route.path.length > 1) {
-      status.textContent = 'Itinéraire prêt.';
+      const modeLabels = MODE_LABELS[route.mode];
+      status.textContent = modeLabels
+        ? `Trajet recalculé pour ${modeLabels.status}.`
+        : 'Trajet recalculé.';
       return;
     }
     if (route.start && !route.end) {
@@ -118,13 +127,17 @@ export function setupRoutePanel({ store }) {
 
     if (route.path && route.path.length > 1) {
       const parts = [];
+      const modeLabels = MODE_LABELS[route.mode];
+      if (modeLabels) {
+        parts.push(modeLabels.summary);
+      }
       if (route.distance != null) {
         parts.push(formatDistance(route.distance));
       }
       if (route.duration != null) {
         parts.push(formatDuration(route.duration));
       }
-      summary.textContent = parts.length > 0 ? parts.join(' • ') : 'Itinéraire disponible';
+      summary.textContent = parts.length > 0 ? parts.join(' • ') : 'Trajet disponible';
       return;
     }
 
