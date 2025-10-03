@@ -38,33 +38,80 @@
       </header>
 
       <main class="app-main" role="main">
-        <aside class="panel panel-left" aria-label="Caméras">
-          <div class="panel-header">
-            <h2>Caméras</h2>
-            <button class="ghost" type="button" aria-label="Ajouter une caméra">
-              +
-            </button>
-          </div>
-          <div class="search-box">
-            <label class="sr-only" for="camera-search">Rechercher une caméra</label>
-            <input
-              id="camera-search"
-              type="search"
-              placeholder="Rechercher"
-              autocomplete="off"
-            />
-          </div>
-          <ul class="camera-list" role="list" aria-live="polite"></ul>
-          <div class="panel-footer">
-            <button
-              class="ghost ghost--danger"
-              type="button"
-              data-action="delete-camera"
-            >
-              Supprimer
-            </button>
-          </div>
-        </aside>
+        <div class="sidebar-column">
+          <aside class="panel route-panel" aria-label="Itinéraire">
+            <div class="panel-header">
+              <h2>Itinéraire</h2>
+            </div>
+            <div class="route-panel-body">
+              <p class="route-panel-status" data-role="route-status" aria-live="polite">
+                Sélectionnez un point de départ et d’arrivée.
+              </p>
+              <div class="route-points" role="group" aria-label="Points de l’itinéraire">
+                <button
+                  type="button"
+                  class="route-point-button route-point-button--start"
+                  data-route-point="start"
+                  aria-pressed="false"
+                >
+                  <span class="route-point-title">Point A</span>
+                  <span class="route-point-meta" data-role="point-start-meta">Cliquez sur la carte</span>
+                </button>
+                <div class="route-points-connector" aria-hidden="true"></div>
+                <button
+                  type="button"
+                  class="route-point-button route-point-button--end"
+                  data-route-point="end"
+                  aria-pressed="false"
+                >
+                  <span class="route-point-title">Point B</span>
+                  <span class="route-point-meta" data-role="point-end-meta">Cliquez sur la carte</span>
+                </button>
+              </div>
+              <div class="route-panel-summary" aria-live="polite">
+                <span>Trajet :</span>
+                <strong data-role="route-summary">—</strong>
+              </div>
+              <button
+                type="button"
+                class="ghost route-reset"
+                data-action="clear-route"
+                aria-disabled="true"
+                disabled
+              >
+                Réinitialiser
+              </button>
+            </div>
+          </aside>
+
+          <aside class="panel panel-left" aria-label="Caméras">
+            <div class="panel-header">
+              <h2>Caméras</h2>
+              <button class="ghost" type="button" aria-label="Ajouter une caméra">
+                +
+              </button>
+            </div>
+            <div class="search-box">
+              <label class="sr-only" for="camera-search">Rechercher une caméra</label>
+              <input
+                id="camera-search"
+                type="search"
+                placeholder="Rechercher"
+                autocomplete="off"
+              />
+            </div>
+            <ul class="camera-list" role="list" aria-live="polite"></ul>
+            <div class="panel-footer">
+              <button
+                class="ghost ghost--danger"
+                type="button"
+                data-action="delete-camera"
+              >
+                Supprimer
+              </button>
+            </div>
+          </aside>
+        </div>
 
         <section class="map-stage" aria-label="Carte et couverture">
           <div class="map-canvas" role="application" aria-label="Carte stylisée">

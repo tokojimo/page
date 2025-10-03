@@ -1,5 +1,6 @@
 import { fetchBuildings } from './buildings.js';
 import { getCameraTypeConfig } from '../utils/cameraTypes.js';
+import { fetchRouteBetween } from '../services/routing.js';
 
 const GRENOBLE_CENTER = [45.1885, 5.7245];
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
@@ -24,6 +25,7 @@ export function setupMapCanvas({ store, tooltip }) {
   }).addTo(map);
 
   const buildingLayer = L.layerGroup().addTo(map);
+  const routeLayer = L.layerGroup().addTo(map);
   const cameraLayer = L.layerGroup().addTo(map);
   const emptyState = document.querySelector('.empty-state');
 
@@ -37,13 +39,48 @@ export function setupMapCanvas({ store, tooltip }) {
   let buildingRequestId = 0;
   const coverageCache = new Map();
   const cameraLayersCache = new Map();
+  const routeLine = L.polyline([], {
+    color: '#2563eb',
+    weight: 4,
+    opacity: 0.75,
+    lineCap: 'round',
+    lineJoin: 'round',
+    interactive: false,
+  });
+  const startMarker = L.marker([0, 0], {
+    icon: createRouteIcon('A', 'start'),
+    interactive: false,
+    keyboard: false,
+  });
+  const endMarker = L.marker([0, 0], {
+    icon: createRouteIcon('B', 'end'),
+    interactive: false,
+    keyboard: false,
+  });
+  let routeRequestId = 0;
+  let activeRouteKey = null;
+  let lastRouteKey = null;
 
   map.on('click', (event) => {
     const { lat, lng } = event.latlng;
+    const state = store.getState();
+    const selection = state.route?.selection;
+
+    if (selection) {
+      store.setRoutePoint(selection, { lat, lon: lng });
+      const { clientX, clientY } = getClientPosition(event.originalEvent);
+      if (tooltip && clientX != null && clientY != null) {
+        const label = selection === 'start' ? 'Point A' : 'Point B';
+        tooltip.show(`${label} positionné`, { x: clientX, y: clientY });
+        tooltip.hide(1400);
+      }
+      return;
+    }
+
     const camera = store.addCamera({ lat, lon: lng });
 
     const { clientX, clientY } = getClientPosition(event.originalEvent);
-    if (clientX != null && clientY != null) {
+    if (tooltip && clientX != null && clientY != null) {
       tooltip.show('Caméra ajoutée', { x: clientX, y: clientY });
       tooltip.hide(1200);
     }
@@ -67,7 +104,8 @@ export function setupMapCanvas({ store, tooltip }) {
   };
 
   function render() {
-    const { cameras, selectedCameraId } = store.getState();
+    const state = store.getState();
+    const { cameras, selectedCameraId, route } = state;
     cameraLayer.clearLayers();
 
     if (emptyState) {
@@ -106,6 +144,117 @@ export function setupMapCanvas({ store, tooltip }) {
       if (activeIds.has(cameraId)) continue;
       coverageCache.delete(cameraId);
     }
+
+    renderRoute(route);
+  }
+
+  function renderRoute(route) {
+    routeLayer.clearLayers();
+    if (!route) {
+      return;
+    }
+
+    const pathPoints = Array.isArray(route.path)
+      ? route.path
+          .filter((point) => isValidPoint(point))
+          .map((point) => [point.lat, point.lon])
+      : [];
+
+    if (pathPoints.length > 1) {
+      routeLine.setLatLngs(pathPoints);
+      routeLine.addTo(routeLayer);
+    }
+
+    if (isValidPoint(route.start)) {
+      startMarker.setLatLng([route.start.lat, route.start.lon]);
+      startMarker.addTo(routeLayer);
+    }
+
+    if (isValidPoint(route.end)) {
+      endMarker.setLatLng([route.end.lat, route.end.lon]);
+      endMarker.addTo(routeLayer);
+    }
+
+    maybeRequestRoute(route);
+  }
+
+  function maybeRequestRoute(route) {
+    if (!route) {
+      activeRouteKey = null;
+      lastRouteKey = null;
+      return;
+    }
+
+    if (!isValidPoint(route.start) || !isValidPoint(route.end)) {
+      activeRouteKey = null;
+      lastRouteKey = null;
+      return;
+    }
+
+    const key = getRouteKey(route.start, route.end);
+
+    if (!Array.isArray(route.path) || route.path.length === 0) {
+      if (lastRouteKey === key) {
+        lastRouteKey = null;
+      }
+    }
+
+    if (route.isLoading) {
+      activeRouteKey = key;
+      return;
+    }
+
+    if (Array.isArray(route.path) && route.path.length > 0 && !route.error && lastRouteKey === key) {
+      return;
+    }
+
+    if (activeRouteKey === key) {
+      return;
+    }
+
+    activeRouteKey = key;
+    requestRoute(route.start, route.end, key);
+  }
+
+  async function requestRoute(start, end, key) {
+    const requestId = ++routeRequestId;
+    store.setRouteLoading(true);
+    try {
+      const result = await fetchRouteBetween(start, end);
+      if (requestId !== routeRequestId) {
+        return;
+      }
+
+      lastRouteKey = key;
+      const path = Array.isArray(result.coordinates)
+        ? result.coordinates.filter((point) => isValidPoint(point))
+        : [];
+      store.setRouteResult({
+        path,
+        distance: result.distance,
+        duration: result.duration,
+      });
+    } catch (error) {
+      if (requestId !== routeRequestId) {
+        return;
+      }
+      lastRouteKey = key;
+      const message =
+        error instanceof Error && error.message ? error.message : 'Itinéraire indisponible';
+      store.setRouteError(message);
+    } finally {
+      if (requestId === routeRequestId) {
+        activeRouteKey = null;
+      }
+    }
+  }
+
+  function isValidPoint(point) {
+    return Boolean(point) && Number.isFinite(point.lat) && Number.isFinite(point.lon);
+  }
+
+  function getRouteKey(start, end) {
+    return [start.lat, start.lon, end.lat, end.lon].map(formatNumber).join('|');
   }
 
   function ensureCameraLayers(camera, appearance) {
@@ -702,6 +851,15 @@ function getClientPosition(event) {
     return { clientX: event.touches[0].clientX, clientY: event.touches[0].clientY };
   }
   return { clientX: null, clientY: null };
+}
+
+function createRouteIcon(label, variant) {
+  return L.divIcon({
+    className: `route-marker leaflet-div-icon route-marker--${variant}`,
+    html: label,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
 }
 
 function destination(lat, lon, distance, bearingDeg) {
