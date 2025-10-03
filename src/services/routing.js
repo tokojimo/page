@@ -23,12 +23,19 @@ export function resolveProfile(mode) {
   return OSRM_PROFILES[normalized] || OSRM_PROFILE_ALIASES[normalized] || OSRM_PROFILES.driving;
 }
 
+const OSRM_API_PROFILE_MAP = {
+  [OSRM_PROFILES.driving]: 'driving',
+  [OSRM_PROFILES.walking]: 'foot',
+  [OSRM_PROFILES.cycling]: 'bike',
+};
+
 function buildRouteUrl(start, end, mode) {
   const startCoords = `${start.lon},${start.lat}`;
   const endCoords = `${end.lon},${end.lat}`;
   const params = new URLSearchParams({ overview: 'full', geometries: 'geojson' });
   const profile = resolveProfile(mode);
-  return `${OSRM_BASE_URL}${profile}/${startCoords};${endCoords}?${params.toString()}`;
+  const profileSlug = OSRM_API_PROFILE_MAP[profile] ?? OSRM_API_PROFILE_MAP[OSRM_PROFILES.driving];
+  return `${OSRM_BASE_URL}${profileSlug}/${startCoords};${endCoords}?${params.toString()}`;
 }
 
 export async function fetchRouteBetween(start, end, mode = 'driving') {
