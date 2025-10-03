@@ -39,7 +39,7 @@ body {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
   background: var(--bg);
   padding: clamp(16px, 1.8vw, 28px) clamp(16px, 2.2vw, 32px);
   gap: clamp(16px, 1.8vw, 28px);
@@ -942,6 +942,7 @@ button.primary:hover {
 
   .map-stage {
     order: 1;
-    min-height: clamp(320px, 55vh, 520px);
+    min-height: 0;
+    flex: 1 1 0;
   }
 }
